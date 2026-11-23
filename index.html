@@ -1,8 +1,14 @@
+<!--
+  Survei Diagnosis SDS & SRQ © 2026 PT Persada Medika Utama.
+  Dibangun oleh Tim IT PT Persada Medika Utama. Dirancang oleh Deiky Catur Hadi.
+  Seluruh hak cipta dilindungi.
+-->
 <!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>Survei Diagnosis SDS & SRQ</title>
 <style>
   :root { --teal: #1a9aa8; --dark: #0f4c55; --line: #cfd8dc; --bg: #f5f8f9; --danger: #c62828; }
@@ -122,6 +128,12 @@
   .terima .nama { font-size: 1.15rem; color: var(--dark); }
   .terima p { margin: 6px auto; max-width: 560px; }
   .rangka { text-align: center; font-size: .8rem; color: #6b8a8e; margin-top: 26px; }
+  /* ===== HAK CIPTA ===== */
+  body { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+  main { flex: 1 0 auto; width: 100%; }
+  .hak-cipta { flex: none; text-align: center; font-size: 11px; line-height: 1.5; color: #5f7175; padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); }
+  .hak-cipta span { display: block; overflow-wrap: anywhere; }
+  .tentang span { display: block; font-size: .88rem; color: #444; overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
@@ -260,8 +272,13 @@
       <div class="aksi"><button type="button" class="btn sekunder" data-kembali="layar-cara">Selesai</button></div>
     </section>
   </section>
-  <p class="rangka">Granostic Center</p>
 </main>
+<footer class="hak-cipta" id="hak-cipta">
+  <span>Survei Diagnosis SDS &amp; SRQ © 2026 PT Persada Medika Utama.</span>
+  <span>Dibangun oleh Tim IT PT Persada Medika Utama. Dirancang oleh Deiky Catur Hadi.</span>
+  <span>Seluruh hak cipta dilindungi.</span>
+</footer>
+
 
 <script>
   // Isi dengan URL Web App Apps Script (hasil Deploy).
@@ -330,7 +347,7 @@
 
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  function tampil(id) { ["layar-cara", "layar-masuk", "layar-pengisi"].forEach(x => { $(x).hidden = x !== id; }); window.scrollTo(0, 0); }
+  function tampil(id) { ["layar-cara", "layar-masuk", "layar-pengisi"].forEach(x => { $(x).hidden = x !== id; }); $("hak-cipta").hidden = id === "layar-pengisi"; window.scrollTo(0, 0); }
   function pesanDi(el, t, j) { el.textContent = t; el.className = "pesan " + j; el.hidden = false; }
   if (!APPS_SCRIPT_URL) $("banner-url").hidden = false;
 
