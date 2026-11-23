@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Admin – SDS 30 & SRQ-20</title>
+<title>Admin – Survei Diagnosis SDS & SRQ</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root { --teal: #1a9aa8; --dark: #0f4c55; --line: #cfd8dc; --bg: #f5f8f9; --danger: #c62828; }
@@ -71,6 +71,59 @@
   .kv div:nth-child(odd) { color: #555; }
   .halaman { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 8px; font-size: .88rem; }
   @media (max-width: 640px) { .field, .kv { grid-template-columns: 1fr; } }
+
+  /* ===== TEMA HIDUP ===== */
+  :root { --teal2: #12b5b0; --biru: #2563eb; --oranye: #f59e0b; --ungu: #7c3aed; --soft: #e6f6f6; }
+  body { background: linear-gradient(180deg, #dff3f4 0, #f1f8f9 340px, #f5f8f9 100%) fixed; }
+  .hero { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: linear-gradient(120deg, #0f4c55 0%, #1a9aa8 60%, #3cc7c2 100%); border-radius: 16px; padding: 16px 20px; margin-bottom: 18px; box-shadow: 0 8px 22px rgba(15,76,85,.22); color: #fff; position: relative; overflow: hidden; }
+  .hero::after { content: ""; position: absolute; right: -50px; top: -60px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255,255,255,.10); pointer-events: none; }
+  .hero .logo, .kop .logo { background: #fff; padding: 7px 14px; border-radius: 12px; height: 56px; margin: 0; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+  .hero .teks b { display: block; font-size: 1.15rem; letter-spacing: .2px; }
+  .hero .teks span { font-size: .85rem; opacity: .9; }
+  .kop { background: linear-gradient(120deg, #0f4c55 0%, #1a9aa8 60%, #3cc7c2 100%); border-radius: 16px; padding: 14px 20px; box-shadow: 0 8px 22px rgba(15,76,85,.22); color: #fff; }
+  .kop .siapa { color: #fff; }
+  .kop .siapa .btn.sekunder { background: rgba(255,255,255,.95); border-color: transparent; }
+  .card { border: 0; border-radius: 14px; box-shadow: 0 4px 16px rgba(15,76,85,.08); border-top: 4px solid var(--teal2); }
+  .card.narrow { border-top-color: var(--teal); }
+  h1 { font-size: 1.4rem; background: linear-gradient(90deg, #0f4c55, #1a9aa8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  h2 { display: flex; align-items: center; gap: 8px; }
+  h2::before { content: ""; width: 5px; height: 1.05em; border-radius: 3px; background: linear-gradient(180deg, var(--teal), var(--teal2)); flex: none; }
+  .modal h2::before { display: none; }
+  .btn { background: linear-gradient(135deg, #1a9aa8, #12b5b0); box-shadow: 0 3px 8px rgba(26,154,168,.30); transition: transform .12s, box-shadow .12s; font-weight: 600; }
+  .btn:hover { filter: none; transform: translateY(-1px); box-shadow: 0 6px 14px rgba(26,154,168,.35); }
+  .btn:disabled { transform: none; box-shadow: none; }
+  .btn.sekunder { background: #fff; box-shadow: none; font-weight: 500; }
+  .btn.sekunder:hover { background: var(--soft); box-shadow: none; }
+  .btn.bahaya { background: #fff; box-shadow: none; }
+  .btn.bahaya:hover { background: #fdecea; }
+  th { background: linear-gradient(180deg, #e3f4f5, #d3ecee); color: #0f4c55; }
+  tbody tr:nth-child(even) td { background: #f6fbfb; }
+  tbody tr:hover td { background: #e9f7f7; }
+  tr.salah td { background: #fdecea !important; }
+  tr.total td { background: #d8eff0 !important; color: #0f4c55; }
+  input[type=text], input[type=password], input[type=date], input[type=search], input[type=file], select { border-radius: 8px; transition: border-color .15s, box-shadow .15s; }
+  input:focus, select:focus { outline: 0; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(26,154,168,.18); }
+  input[readonly] { background: #e9f1f2; }
+  details.panduan { background: #f1fafa; border-color: #bfe3e5; border-left: 4px solid var(--teal2); }
+  .tabs button { border-radius: 999px; padding: 8px 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); transition: background .15s, transform .12s; }
+  .tabs button:hover { background: var(--soft); transform: translateY(-1px); }
+  .tabs button.aktif { background: linear-gradient(135deg, #1a9aa8, #12b5b0); box-shadow: 0 4px 10px rgba(26,154,168,.35); }
+  .metrik div { background: #fff; border-radius: 12px; border-left: 5px solid var(--teal); box-shadow: 0 3px 10px rgba(15,76,85,.08); }
+  .metrik div:nth-child(2) { border-left-color: #16a34a; } .metrik div:nth-child(2) b { color: #15803d; }
+  .metrik div:nth-child(3) { border-left-color: var(--oranye); } .metrik div:nth-child(3) b { color: #b45309; }
+  .metrik div:nth-child(4) { border-left-color: var(--ungu); } .metrik div:nth-child(4) b { color: #6d28d9; }
+  .metrik b { font-size: 1.7rem; }
+  .bar { height: 12px; background: #dcebed; } .bar i { background: linear-gradient(90deg, #1a9aa8, #34d399); border-radius: 6px; }
+  .pilih button { border: 2px solid #cfe7e9; border-radius: 14px; padding: 20px; background: linear-gradient(160deg, #fff, #effafa); transition: transform .15s, box-shadow .15s, border-color .15s; }
+  .pilih button:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(26,154,168,.20); border-color: var(--teal2); }
+  .pilih button .ik { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; font-size: 1.4rem; margin-bottom: 10px; background: linear-gradient(135deg, #1a9aa8, #3cc7c2); box-shadow: 0 3px 8px rgba(26,154,168,.3); }
+  .pilih button:nth-child(2) .ik { background: linear-gradient(135deg, #f59e0b, #fbbf24); box-shadow: 0 3px 8px rgba(245,158,11,.3); }
+  tr[data-row]:hover td { background: #e6f6f6; }
+  input[type=radio] { width: 20px; height: 20px; }
+  .ttd-box { border: 2px dashed var(--teal); background: #fbfeff; }
+  .status { background: #effafa; border-left: 4px solid var(--teal2); padding: 8px 12px; border-radius: 8px; }
+  .pesan.ok { border-left: 4px solid #16a34a; } .pesan.err { border-left: 4px solid var(--danger); }
+  .rangka { text-align: center; font-size: .8rem; color: #6b8a8e; margin-top: 26px; }
 </style>
 </head>
 <body>
