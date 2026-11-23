@@ -111,6 +111,16 @@
   .pilih button { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; }
   .skala { list-style: none; padding-left: 0; margin: 8px 0 12px; background: #f1fafa; border-radius: 8px; padding: 10px 14px; }
   .skala li { margin: 2px 0; }
+  .pesan.info { background: #e3f2fd; color: #0d47a1; border-left: 4px solid #2563eb; }
+  .cek { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; font-size: .98rem; line-height: 1.5; }
+  .cek input { width: 22px; height: 22px; margin-top: 2px; flex: none; accent-color: var(--teal); cursor: pointer; }
+  #kartu-pernyataan.salah { border-top-color: var(--danger); background: #fdecea; }
+  .terima { text-align: center; padding: 8px 0 4px; }
+  .terima .centang { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 12px; display: grid; place-items: center; font-size: 2rem; color: #fff; background: linear-gradient(135deg, #16a34a, #34d399); box-shadow: 0 6px 16px rgba(22,163,74,.35); }
+  .terima h2 { justify-content: center; font-size: 1.4rem; }
+  .terima h2::before { display: none; }
+  .terima .nama { font-size: 1.15rem; color: var(--dark); }
+  .terima p { margin: 6px auto; max-width: 560px; }
   .rangka { text-align: center; font-size: .8rem; color: #6b8a8e; margin-top: 26px; }
 </style>
 </head>
@@ -181,8 +191,10 @@
 
   <!-- FORM -->
   <section id="layar-pengisi" hidden>
+    <div id="kepala-form">
     <div class="aksi" style="margin-bottom:10px;"><button type="button" class="btn sekunder kecil" data-kembali="layar-cara">← Kembali</button></div>
     <p class="intro">Isi semua identitas dan semua soal, tanda tangan, lalu tekan Kirim.</p>
+    </div>
     <form id="form" novalidate>
       <section class="card">
         <h2>Identitas</h2>
@@ -226,13 +238,23 @@
         </table></div>
       </section>
 
+      <section class="card" id="kartu-pernyataan">
+        <h2>Pernyataan</h2>
+        <label class="cek"><input type="checkbox" id="pernyataan"><span>Saya menyatakan bahwa seluruh pengisian survei ini saya lakukan sendiri, dengan jujur dan sesuai kondisi saya yang sebenarnya.</span></label>
+      </section>
       <div class="aksi"><button type="submit" class="btn besar" id="btn-kirim">Kirim</button></div>
       <div id="pesan" class="pesan" hidden></div>
     </form>
 
     <section id="hasil" class="card" hidden>
-      <h2>Terkirim</h2>
-      <p class="intro">Jawaban Anda sudah lengkap dan tersimpan. Terima kasih.</p>
+      <div class="terima">
+        <div class="centang" aria-hidden="true">✓</div>
+        <h2>Terima kasih</h2>
+        <p class="nama"><b id="ucapNama"></b></p>
+        <p id="ucapWaktu" class="intro"></p>
+        <p class="intro">Jawaban Anda sudah lengkap dan tersimpan. Kami menghargai waktu dan kejujuran Anda dalam mengisi survei ini. Semoga Anda senantiasa sehat dan sukses dalam bekerja.</p>
+      </div>
+      <h3 style="margin:14px 0 4px;color:var(--dark)">Ringkasan hasil Anda</h3>
       <p class="status" id="statusSRQ"></p>
       <p class="status" id="statusSDS"></p>
       <div class="aksi"><button type="button" class="btn sekunder" data-kembali="layar-cara">Selesai</button></div>
@@ -312,12 +334,22 @@
   function pesanDi(el, t, j) { el.textContent = t; el.className = "pesan " + j; el.hidden = false; }
   if (!APPS_SCRIPT_URL) $("banner-url").hidden = false;
 
+  // Panggil backend dengan batas waktu dan pesan error yang jelas
+  async function panggil(body) {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 45000);
+    try {
+      const r = await fetch(APPS_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body), signal: ctl.signal });
+      const teks = await r.text();
+      try { return JSON.parse(teks); }
+      catch (_) { return { ok: false, pesan: "Server membalas dengan data yang tidak dikenali. Biasanya karena deploy belum diatur 'Who has access: Anyone', atau URL yang dipakai bukan yang berakhiran /exec. Deploy ulang (New version) lalu coba lagi." }; }
+    } catch (e) {
+      return { ok: false, pesan: e.name === "AbortError" ? "Server terlalu lama membalas (lebih dari 45 detik). Tunggu sebentar lalu coba lagi." : "Tidak bisa terhubung ke server. Periksa internet dan URL backend, lalu pastikan deploy memakai 'Who has access: Anyone'." };
+    } finally { clearTimeout(t); }
+  }
+
   async function api(aksi, data = {}) {
     if (!APPS_SCRIPT_URL) return { ok: false, pesan: "APPS_SCRIPT_URL belum diisi di file ini." };
-    try {
-      const r = await fetch(APPS_SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ aksi, ...data }) });
-      return await r.json();
-    } catch (e) { return { ok: false, pesan: "Gagal terhubung ke server. Periksa koneksi lalu coba lagi." }; }
+    return panggil({ aksi, ...data });
   }
 
   // render soal
@@ -353,9 +385,9 @@
   let konteks = null; // { metode: 'mandiri' | 'terdaftar', id, password }
   function bukaForm(ctx, ident) {
     konteks = ctx;
-    $("form").reset(); kosongTTD();
+    $("form").reset(); kosongTTD(); $("kepala-form").hidden = false;
     document.querySelectorAll("tr.salah").forEach(tr => tr.classList.remove("salah"));
-    $("pesan").hidden = true; $("hasil").hidden = true; $("form").hidden = false; $("btn-kirim").disabled = false;
+    $("kartu-pernyataan").classList.remove("salah"); $("pesan").hidden = true; $("hasil").hidden = true; $("form").hidden = false; $("btn-kirim").disabled = false;
     const terkunci = ctx.metode === "terdaftar";
     $("nama").value = ident.nama || ""; $("nip").value = ident.nip || ""; $("norm").value = ident.norm || "";
     $("tgl").value = ident.tglLahir || ""; $("perusahaan").value = ident.perusahaan || "";
@@ -387,22 +419,26 @@
     const kurang = [];
     if (!identitas.nama) kurang.push("Nama"); if (!identitas.nip) kurang.push("NIP"); if (!identitas.tglLahir) kurang.push("Tgl Lahir");
     if (!identitas.perusahaan) kurang.push("Perusahaan"); if (!adaTTD) kurang.push("Tanda tangan");
+    const setuju = $("pernyataan").checked; if (!setuju) kurang.push("Pernyataan (centang kotak di bagian akhir)");
+    $("kartu-pernyataan").classList.toggle("salah", !setuju);
     const fd = new FormData($("form")), sds = {}, srq = {}; let pertama = null;
     SDS.forEach((_, i) => { const n = i + 1, v = fd.get("sds" + n); if (v) sds[n] = Number(v); else { pertama = pertama || "sds" + n; kurang.push("SDS " + n); } });
     SRQ.forEach((_, i) => { const n = i + 1, v = fd.get("srq" + n); if (v) srq[n] = v; else { pertama = pertama || "srq" + n; kurang.push("SRQ " + n); } });
     if (kurang.length) {
       pesanDi($("pesan"), "Belum lengkap: " + kurang.slice(0, 8).join(", ") + (kurang.length > 8 ? ", dst." : ""), "err");
       document.querySelectorAll("tr[data-row]").forEach(tr => { if (!tr.querySelector("input:checked")) tr.classList.add("salah"); });
-      ((pertama && document.querySelector(`[name="${pertama}"]`)) || $("nama")).scrollIntoView({ behavior: "smooth", block: "center" });
+      ((pertama && document.querySelector(`[name="${pertama}"]`)) || (!setuju && identitas.nama && adaTTD ? $("kartu-pernyataan") : $("nama"))).scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     $("btn-kirim").disabled = true;
-    const r = await api("kirim", { metode: konteks.metode, id: konteks.id, password: konteks.password, identitas, sds, srq, tandaTangan: ttdKecil() });
+    const r = await api("kirim", { metode: konteks.metode, id: konteks.id, password: konteks.password, identitas, sds, srq, tandaTangan: ttdKecil(), pernyataan: true });
     if (!r.ok) { $("btn-kirim").disabled = false; return pesanDi($("pesan"), r.pesan, "err"); }
     const n = hitungPenilaian(sds, srq);
     $("statusSRQ").innerHTML = `<b>SRQ-20:</b> ${n.jumlahY} Ya → ${esc(n.srqKes)} → <b>${n.kelaikanSRQ}</b>`;
     $("statusSDS").innerHTML = `<b>SDS 30:</b> total ${n.total} → <b>${n.kelaikanSDS}</b><br><small>` + n.dimensi.map(d => `${esc(d.nama)}: ${d.skor} (${esc(d.kategori)})`).join(" · ") + `</small>`;
-    $("form").hidden = true; $("hasil").hidden = false; window.scrollTo(0, 0);
+    $("ucapNama").textContent = identitas.nama;
+    $("ucapWaktu").textContent = "Dikirim pada " + new Date().toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short" });
+    $("form").hidden = true; $("kepala-form").hidden = true; $("hasil").hidden = false; window.scrollTo(0, 0);
   });
 </script>
 </body>
