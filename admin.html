@@ -12,6 +12,8 @@
 <title>Admin – Survei Diagnosis SDS & SRQ</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
   :root { --teal: #1a9aa8; --dark: #0f4c55; --line: #cfd8dc; --bg: #f5f8f9; --danger: #c62828; }
   * { box-sizing: border-box; }
@@ -192,8 +194,17 @@
   .hal table.tb td.nil { width: 8mm; }
   .hal table.tb.sds td { height: 9mm; font-size: 9.5pt; line-height: 1.2; padding-top: .6mm; padding-bottom: .6mm; }
   .hal table.tb.srq td { height: 7.2mm; font-size: 10pt; }
+  .hal table.tb.sds.p2 td { height: 8.4mm; font-size: 9pt; line-height: 1.1; padding-top: .4mm; padding-bottom: .4mm; }
   .hal table.tb.srq td.nil { width: 17mm; }
   .hal .nip-kaki { margin-top: 2mm; font-size: 7.5pt; color: #444; text-align: right; }
+  .hal .kaki { bottom: 6mm; }
+  .hal .sudut { position: absolute; width: 4mm; height: 4mm; background: #000 !important; }
+  .hal .sudut.a { left: 0; top: 0; } .hal .sudut.b { right: 0; top: 0; } .hal .sudut.c { left: 0; bottom: 0; } .hal .sudut.d { right: 0; bottom: 0; }
+  .hal .kanan { display: flex; align-items: flex-end; gap: 2mm; margin-right: 6mm; }
+  .hal .kaki > img:first-child { margin-left: 6mm; }
+  .hal .kp img.g { margin-left: 6mm; } .hal .kp img.k { margin-right: 6mm; }
+  .hal .kanan img.qr { width: 16mm; height: 16mm; }
+  .hal .kanan span { font-size: 7.5pt; color: #444 !important; text-align: right; }
 </style>
 </head>
 <body>
@@ -232,6 +243,7 @@
       <button type="button" data-tab="tab-import">Import Bulk</button>
       <button type="button" data-tab="tab-rekap">Rekap</button>
       <button type="button" data-tab="tab-kertas">Form Kertas</button>
+      <button type="button" data-tab="tab-scan">Upload Scan</button>
       <button type="button" data-tab="tab-pengguna" id="tab-btn-pengguna" hidden>Pengguna</button>
       <button type="button" data-tab="tab-panduan">Panduan</button>
       <button type="button" class="btn sekunder kecil" id="btn-muat" style="margin-left:auto">Muat ulang data</button>
@@ -349,6 +361,15 @@
       </div>
       <p class="kecil-teks" id="info-kertas"></p>
       <div class="aksi"><button type="button" class="btn" id="cetak-kertas">Cetak Form</button></div>
+    </div>
+
+    <div id="tab-scan" class="card" hidden>
+      <h2>Upload Scan Form Kertas</h2>
+      <p class="intro">Unggah hasil scan form kertas yang sudah diisi pengisi (JPG atau PNG, satu file per halaman, <b>pakai scanner, bukan foto HP</b>). Aplikasi membaca QR dan centang lalu menampilkan <b>pratinjau</b>. Data baru disimpan setelah admin menekan Simpan di tiap peserta.</p>
+      <div class="field" style="max-width:640px"><label for="scan-file">File scan (bisa pilih banyak sekaligus)</label><input type="file" id="scan-file" accept="image/jpeg,image/png" multiple></div>
+      <div class="aksi"><button type="button" class="btn" id="scan-baca">Baca Scan</button></div>
+      <p class="kecil-teks" id="scan-status"></p>
+      <div id="scan-hasil"></div>
     </div>
 
     <div id="tab-panduan" class="card" hidden>
@@ -497,7 +518,7 @@
 
 <script>
   // Isi dengan URL Web App Apps Script (hasil Deploy).
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbydGDEqXvK0Z-G5iaSEHFLpeY3JBsQZJ8fX_SI80F8zPmFIto33ST7G5dCnJ9Yre-BRZw/exec";
+  const APPS_SCRIPT_URL = "";
   const KUNCI_TOKEN = "sdssrq.token";
   const UKURAN_HAL = 50;
 
@@ -659,7 +680,7 @@
   }
 
   // ====== TAB ======
-  const SEMUA_TAB = ["tab-dashboard", "tab-perusahaan", "tab-peserta", "tab-hasil", "tab-tambah", "tab-import", "tab-rekap", "tab-kertas", "tab-pengguna", "tab-panduan"];
+  const SEMUA_TAB = ["tab-dashboard", "tab-perusahaan", "tab-peserta", "tab-hasil", "tab-tambah", "tab-import", "tab-rekap", "tab-kertas", "tab-scan", "tab-pengguna", "tab-panduan"];
   function pilihTab(id) {
     SEMUA_TAB.forEach(t => { $(t).hidden = t !== id; });
     document.querySelectorAll("#tabs button[data-tab]").forEach(b => b.classList.toggle("aktif", b.dataset.tab === (id === "tab-perusahaan" ? "tab-dashboard" : id)));
@@ -1076,25 +1097,29 @@
         </table>
         <div class="ttd">Tanda Tangan Karyawan<small>Dengan tanda tangan ini saya menyatakan formulir ini saya isi sendiri.</small></div>
       </div>`;
-    const kaki = `<div class="kaki"><img src="${logoA}" alt=""><span>${i && i.nip ? "NIP " + esc(i.nip) : ""}</span></div>`;
+    const sudut = `<i class="sudut a"></i><i class="sudut b"></i><i class="sudut c"></i><i class="sudut d"></i>`;
+    const kaki = (n) => {
+      const qr = p && p.id ? (() => { const q = qrcode(0, "M"); q.addData(`SDSSRQ|${p.id}|${n}`); q.make(); return `<img class="qr" src="${q.createDataURL(4, 0)}" alt="">`; })() : "";
+      return `<div class="kaki"><img src="${logoA}" alt=""><div class="kanan">${qr}<span>${i && i.nip ? "NIP " + esc(i.nip) + "<br>" : ""}Halaman ${n} dari 3</span></div></div>`;
+    };
     const kotak = () => `<td class="nil"></td>`.repeat(7);
     const kepalaTabel = `<tr><th rowspan="2" style="width:9mm">No</th><th rowspan="2">Kondisi yang diuraikan</th><th colspan="7">Nilai (beri tanda centang pada kolom yang telah disediakan)</th></tr><tr>${[1,2,3,4,5,6,7].map(n => `<th>${n}</th>`).join("")}</tr>`;
     const baris = (dari, sampai) => SDS.slice(dari, sampai).map((t, k) => `<tr><td class="no">${dari + k + 1}</td><td>${esc(t)}</td>${kotak()}</tr>`).join("");
-    const hal1 = `<section class="hal">${kepala("Survei Diagnosis Stress Kerja – 30 (SDS 30)")}
+    const hal1 = `<section class="hal">${sudut}${kepala("Survei Diagnosis Stress Kerja – 30 (SDS 30)")}
       <p>Kuesioner ini dirancang untuk mengetahui sejauh mana berbagai kondisi pekerjaan menjadi sumber stress seseorang dalam lingkungan pekerjaannya.</p>
       <p>Karyawan diminta memilih seberapa sering kondisi tersebut menimbulkan stress sesuai dengan nomor pada keterangan di bawah ini.</p>
       <p>Karyawan akan memilih:</p>
       <ol class="sk">${SKALA_SDS.map((s, k) => `<li>${k + 1} = bila kondisi yang diuraikan <b>${s}</b> menimbulkan stress</li>`).join("")}</ol>
-      <table class="tb sds">${kepalaTabel}${baris(0, 9)}</table>${kaki}</section>`;
-    const hal2 = `<section class="hal"><div class="kp"><img class="g" src="${logo}" alt=""><img class="k" src="${logoK}" alt=""></div>
-      <table class="tb sds">${kepalaTabel}${baris(9, 30)}</table>${kaki}</section>`;
-    const hal3 = `<section class="hal">${kepala("Formulir Self Reporting Questionnaire-20 (SRQ-20)")}
+      <table class="tb sds">${kepalaTabel}${baris(0, 9)}</table>${kaki(1)}</section>`;
+    const hal2 = `<section class="hal">${sudut}<div class="kp"><img class="g" src="${logo}" alt=""><img class="k" src="${logoK}" alt=""></div>
+      <table class="tb sds p2">${kepalaTabel}${baris(9, 30)}</table>${kaki(2)}</section>`;
+    const hal3 = `<section class="hal">${sudut}${kepala("Formulir Self Reporting Questionnaire-20 (SRQ-20)")}
       <p><b>Petunjuk:</b> Bacalah petunjuk ini seluruhnya sebelum mulai mengisi.</p>
       <p>Pertanyaan berikut berhubungan dengan masalah yang mungkin mengganggu Anda selama <b>30 hari terakhir</b>. Apabila Anda menganggap pertanyaan itu <b>Anda alami dalam 30 hari terakhir</b>, berilah <b>tanda silang (X)</b> pada kolom <b>Y (berarti Ya)</b>. Sebaliknya, apabila Anda menganggap pertanyaan itu <b>tidak Anda alami dalam 30 hari terakhir</b>, berilah <b>tanda silang (X)</b> pada kolom <b>T (Tidak)</b>. Jika Anda tidak yakin tentang jawabannya, berilah jawaban yang paling sesuai di antara Y dan T.</p>
       <table class="tb srq"><tr><th style="width:9mm">NO</th><th>Pertanyaan</th><th style="width:17mm">Y</th><th style="width:17mm">T</th></tr>
       ${SRQ.map((t, k) => `<tr><td class="no">${k + 1}</td><td>${esc(t)}</td><td class="nil"></td><td class="nil"></td></tr>`).join("")}
       <tr><td colspan="2"><b>Total skor</b></td><td class="nil"></td><td class="nil"></td></tr>
-      <tr><td colspan="4"><b>Interpretasi Hasil:</b></td></tr></table>${kaki}</section>`;
+      <tr><td colspan="4"><b>Interpretasi Hasil:</b></td></tr></table>${kaki(3)}</section>`;
     return hal1 + hal2 + hal3;
   }
   function susunKertas() {
@@ -1112,6 +1137,208 @@
     const selesai = () => { document.body.classList.remove("cetak"); $("area-cetak").innerHTML = ""; window.removeEventListener("afterprint", selesai); };
     window.addEventListener("afterprint", selesai);
     setTimeout(() => window.print(), 150);
+  });
+
+  // ====== UPLOAD SCAN FORM KERTAS ======
+  // Tata letak halaman dalam mm (A4). Penanda sudut hitam 4 mm di tiap pojok area cetak.
+  const SCAN_TITIK = [[16, 12], [194, 12], [16, 284], [194, 284]];   // kiri-atas, kanan-atas, kiri-bawah, kanan-bawah
+  const SCAN_MARKER_MM = 4;
+  function homografi(src, dst) {
+    const A = [], b = [];
+    for (let k = 0; k < 4; k++) {
+      const [x, y] = src[k], [u, v] = dst[k];
+      A.push([x, y, 1, 0, 0, 0, -x * u, -y * u]); b.push(u);
+      A.push([0, 0, 0, x, y, 1, -x * v, -y * v]); b.push(v);
+    }
+    const n = 8, M = A.map((r, i) => [...r, b[i]]);
+    for (let c = 0; c < n; c++) {
+      let piv = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+      [M[c], M[piv]] = [M[piv], M[c]];
+      for (let r = 0; r < n; r++) { if (r === c) continue; const f = M[r][c] / M[c][c]; for (let q = c; q <= n; q++) M[r][q] -= f * M[c][q]; }
+    }
+    const h = M.map((r, i) => r[n] / r[i]);
+    return (x, y) => { const d = h[6] * x + h[7] * y + 1; return [(h[0] * x + h[1] * y + h[2]) / d, (h[3] * x + h[4] * y + h[5]) / d]; };
+  }
+  // tata letak satu halaman untuk satu peserta: kotak centang dan area tanda tangan (mm, koordinat kertas)
+  function tataLetakHalaman(p, n) {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "position:absolute;left:-10000px;top:0;width:182mm;";
+    wrap.innerHTML = halamanKertas(p, "", "", "");
+    document.body.appendChild(wrap);
+    try {
+      const sec = wrap.querySelectorAll("section.hal")[n - 1];
+      const o = sec.getBoundingClientRect(), k = 182 / o.width;
+      const kotak = (el) => { const r = el.getBoundingClientRect(); return { x: 14 + (r.left - o.left) * k, y: 10 + (r.top - o.top) * k, w: r.width * k, h: r.height * k }; };
+      const sds = [], srq = [];
+      sec.querySelectorAll("table.tb.sds tr").forEach(tr => {
+        const no = tr.querySelector("td.no"), nil = tr.querySelectorAll("td.nil");
+        if (no && nil.length === 7) sds.push({ no: +no.textContent, sel: [...nil].map(kotak) });
+      });
+      sec.querySelectorAll("table.tb.srq tr").forEach(tr => {
+        const no = tr.querySelector("td.no"), nil = tr.querySelectorAll("td.nil");
+        if (no && nil.length === 2) srq.push({ no: +no.textContent, y: kotak(nil[0]), t: kotak(nil[1]) });
+      });
+      let ttd = null; const tb = sec.querySelector(".ttd");
+      if (tb) { const r = kotak(tb); ttd = { x: r.x + 2, y: r.y + r.h * 0.18, w: r.w - 4, h: r.h * 0.5 }; }
+      return { sds, srq, ttd };
+    } finally { wrap.remove(); }
+  }
+  // cari penanda sudut: blok hitam padat ukuran ±4 mm dekat posisi perkiraan
+  function cariPenanda(gray, W, H, pxPerMm, cx, cy) {
+    const s = SCAN_MARKER_MM * pxPerMm, rad = s * 2.2;
+    const x0 = Math.max(0, Math.floor(cx - rad)), x1 = Math.min(W - 1, Math.ceil(cx + rad));
+    const y0 = Math.max(0, Math.floor(cy - rad)), y1 = Math.min(H - 1, Math.ceil(cy + rad));
+    const seen = new Uint8Array(W * H); let best = null, bestJarak = Infinity;
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const idx = y * W + x; if (seen[idx] || gray[idx] >= 110) continue;
+      let cnt = 0, minx = x, maxx = x, miny = y, maxy = y, sx = 0, sy = 0; const st = [idx]; seen[idx] = 1;
+      while (st.length) {
+        const q = st.pop(), qx = q % W, qy = (q - qx) / W; cnt++; sx += qx; sy += qy;
+        if (qx < minx) minx = qx; if (qx > maxx) maxx = qx; if (qy < miny) miny = qy; if (qy > maxy) maxy = qy;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = qx + dx, ny = qy + dy;
+          if (nx < x0 || nx > x1 || ny < y0 || ny > y1) continue;
+          const ni = ny * W + nx; if (seen[ni] || gray[ni] >= 110) continue; seen[ni] = 1; st.push(ni);
+        }
+      }
+      const bw = maxx - minx + 1, bh = maxy - miny + 1;
+      const pasSize = bw > s * 0.6 && bw < s * 1.5 && bh > s * 0.6 && bh < s * 1.5 && Math.abs(bw - bh) / Math.max(bw, bh) < 0.3;
+      if (!pasSize || cnt / (bw * bh) < 0.8) continue;
+      const mx = sx / cnt, my = sy / cnt, jarak = Math.hypot(mx - cx, my - cy);
+      if (jarak < bestJarak) { bestJarak = jarak; best = [mx, my]; }
+    }
+    return best;
+  }
+  function inkKotak(gray, W, H, peta, r) {
+    const m = 0.9, N = 40; let gelap = 0, total = 0;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const xm = r.x + m + (r.w - 2 * m) * (i + 0.5) / N, ym = r.y + m + (r.h - 2 * m) * (j + 0.5) / N;
+      const [u, v] = peta(xm, ym), iu = Math.round(u), iv = Math.round(v);
+      if (iu < 0 || iv < 0 || iu >= W || iv >= H) continue;
+      total++; if (gray[iv * W + iu] < 130) gelap++;
+    }
+    return total ? gelap / total : 0;
+  }
+  function satuPilihan(inks, batas = 0.01) {
+    const lulus = inks.map((v, i) => ({ v, i })).filter(x => x.v >= batas);
+    if (!lulus.length) return { nilai: null, status: "kosong" };
+    if (lulus.length > 1) return { nilai: lulus.sort((a, b) => b.v - a.v)[0].i, status: "ganda" };
+    return { nilai: lulus[0].i, status: "ok" };
+  }
+  // baca satu file scan -> hasil per halaman
+  async function bacaFileScan(file) {
+    const hasil = { nama: file.name, error: null };
+    try {
+      const bmp = await createImageBitmap(file);
+      const W = bmp.width, H = bmp.height, cv = document.createElement("canvas");
+      cv.width = W; cv.height = H; const cx = cv.getContext("2d", { willReadFrequently: true }); cx.drawImage(bmp, 0, 0);
+      const rgba = cx.getImageData(0, 0, W, H).data, gray = new Uint8ClampedArray(W * H);
+      for (let i = 0, j = 0; i < gray.length; i++, j += 4) gray[i] = 0.299 * rgba[j] + 0.587 * rgba[j + 1] + 0.114 * rgba[j + 2];
+      const qr = (typeof jsQR === "function") ? jsQR(rgba, W, H) : null;
+      const m = qr && /^SDSSRQ\|([^|]+)\|([123])$/.exec(qr.data);
+      if (!m) { hasil.error = "QR di halaman tidak terbaca. Pastikan halaman ter-scan utuh (bukan foto HP) dan QR tidak tertutup."; return hasil; }
+      hasil.id = m[1]; hasil.halaman = +m[2];
+      const pxPerMm = W / 210;
+      const pusat = SCAN_TITIK.map(([mx, my]) => cariPenanda(gray, W, H, pxPerMm, mx * pxPerMm, my * pxPerMm));
+      if (pusat.some(p => !p)) { hasil.error = "Penanda sudut tidak lengkap. Pastikan scan memuat seluruh halaman A4 dan tidak miring terlalu jauh."; return hasil; }
+      const peta = homografi(SCAN_TITIK, pusat);
+      const rec = data.find(r => r.id === hasil.id);
+      if (!rec) { hasil.error = "Peserta dengan QR ini tidak ada di data (mungkin sudah dihapus)."; return hasil; }
+      hasil.rec = rec;
+      const tl = tataLetakHalaman(rec, hasil.halaman);
+      hasil.sds = tl.sds.map(s => ({ no: s.no, ...satuPilihan(s.sel.map(r => inkKotak(gray, W, H, peta, r))) }));
+      hasil.srq = tl.srq.map(s => ({ no: s.no, ...satuPilihan([inkKotak(gray, W, H, peta, s.y), inkKotak(gray, W, H, peta, s.t)]) }));
+      if (tl.ttd) {
+        const sudut = [[tl.ttd.x, tl.ttd.y], [tl.ttd.x + tl.ttd.w, tl.ttd.y], [tl.ttd.x, tl.ttd.y + tl.ttd.h], [tl.ttd.x + tl.ttd.w, tl.ttd.y + tl.ttd.h]].map(([x, y]) => peta(x, y));
+        const x0 = Math.max(0, Math.min(...sudut.map(p => p[0]))), x1 = Math.min(W, Math.max(...sudut.map(p => p[0])));
+        const y0 = Math.max(0, Math.min(...sudut.map(p => p[1]))), y1 = Math.min(H, Math.max(...sudut.map(p => p[1])));
+        let tinta = 0; for (let y = Math.floor(y0); y < y1; y += 2) for (let x = Math.floor(x0); x < x1; x += 2) if (gray[y * W + x] < 120) tinta++;
+        hasil.adaTtd = tinta > 40;
+        if (hasil.adaTtd) {
+          const lebar = 300, skala = lebar / Math.max(1, x1 - x0), kc = document.createElement("canvas");
+          kc.width = lebar; kc.height = Math.max(1, Math.round((y1 - y0) * skala));
+          kc.getContext("2d").drawImage(cv, x0, y0, x1 - x0, y1 - y0, 0, 0, kc.width, kc.height);
+          hasil.ttd = kc.toDataURL("image/jpeg", 0.8);
+        }
+      }
+    } catch (e) { hasil.error = "Gagal membaca file: " + e.message; }
+    return hasil;
+  }
+  // kelompokkan per peserta lalu tampilkan pratinjau
+  let scanPeserta = {};
+  function renderScan() {
+    const kartu = Object.entries(scanPeserta).map(([id, g]) => {
+      const rec = g.rec, hal = [1, 2, 3].filter(h => g.halaman[h]);
+      const lengkap = hal.length === 3;
+      const kosong = [...(g.sds || []), ...(g.srq || [])].filter(x => x.nilai === null).length;
+      const ganda = [...(g.sds || []), ...(g.srq || [])].filter(x => x.status === "ganda").length;
+      const peringatan = [];
+      if (!lengkap) peringatan.push("Halaman belum lengkap: belum ada " + [1, 2, 3].filter(h => !g.halaman[h]).map(h => "halaman " + h).join(", ") + ".");
+      if (rec.password === undefined || rec.password === "") peringatan.push("Peserta ini tidak punya password (mengisi mandiri), tidak bisa disimpan lewat upload.");
+      if (rec.status === "selesai") peringatan.push("Peserta ini sudah mengisi. Pakai Buka ulang dulu bila ingin diganti.");
+      if (kosong) peringatan.push(kosong + " soal kosong (kotak tidak ditandai).");
+      if (ganda) peringatan.push(ganda + " soal ditandai lebih dari satu kotak. Pilih jawaban yang benar.");
+      if (!g.ttd) peringatan.push("Tanda tangan tidak terbaca. Periksa scan halaman 1.");
+      const bisa = lengkap && rec.password && rec.status !== "selesai" && g.ttd && [...g.sds, ...g.srq].every(x => x.nilai !== null);
+      const sel = (opsi, val, tanda) => `<select data-id="${esc(id)}" data-tanda="${tanda}" class="kecil-sel">${opsi.map(o => `<option value="${o}" ${String(val) === o ? "selected" : ""}>${o === "" ? "-" : o}</option>`).join("")}</select>`;
+      const isi = (x, opsi, tanda) => { const v = x.nilai === null ? "" : (typeof x.nilai === "number" && tanda === "sds" ? String(x.nilai + 1) : (tanda === "srq" ? (x.nilai === 0 ? "Y" : "T") : "")); return sel(opsi, v, tanda); };
+      const tblSds = g.sds.map(x => `<tr class="${x.nilai === null || x.status === "ganda" ? "salah" : ""}"><td class="no">${x.no}</td><td>${isi(x, ["", "1", "2", "3", "4", "5", "6", "7"], "sds")}</td></tr>`).join("");
+      const tblSrq = g.srq.map(x => `<tr class="${x.nilai === null || x.status === "ganda" ? "salah" : ""}"><td class="no">${x.no}</td><td>${isi(x, ["", "Y", "T"], "srq")}</td></tr>`).join("");
+      return `<div class="card" style="margin-top:12px">
+        <h3>${esc(rec.identitas.nama)} <span class="kecil-teks">NIP ${esc(rec.identitas.nip)} · ${esc(rec.identitas.perusahaan)}</span></h3>
+        <p class="kecil-teks">Halaman terbaca: ${hal.join(", ") || "-"} dari 3 · File: ${g.files.map(esc).join(", ")}</p>
+        ${peringatan.length ? `<div class="pesan err">${peringatan.map(esc).join("<br>")}</div>` : ""}
+        <div class="dua-kolom">
+          <div><h4>SDS 30</h4><div class="table-wrap"><table><tbody>${tblSds}</tbody></table></div></div>
+          <div><h4>SRQ 20</h4><div class="table-wrap"><table><tbody>${tblSrq}</tbody></table></div>
+            ${g.ttd ? `<p class="kecil-teks">Tanda tangan hasil scan:</p><img src="${g.ttd}" alt="Tanda tangan" style="max-width:260px;border:1px solid #ccc;background:#fff">` : ""}</div>
+        </div>
+        <div class="aksi"><button type="button" class="btn" data-aksi="scan-simpan" data-id="${esc(id)}" ${bisa ? "" : "disabled"}>Simpan ke data peserta</button>
+          <button type="button" class="btn sekunder" data-aksi="scan-buang" data-id="${esc(id)}">Buang</button></div>
+      </div>`;
+    });
+    $("scan-hasil").innerHTML = kartu.join("") || "";
+  }
+  $("scan-hasil").addEventListener("change", (e) => {
+    const s = e.target; if (!s.dataset || !s.dataset.id) return;
+    const g = scanPeserta[s.dataset.id]; if (!g) return;
+    const no = +s.closest("tr").querySelector("td.no").textContent;
+    const arr = s.dataset.tanda === "sds" ? g.sds : g.srq, x = arr.find(q => q.no === no);
+    if (x) { x.nilai = s.value === "" ? null : (s.dataset.tanda === "sds" ? +s.value - 1 : (s.value === "Y" ? 0 : 1)); x.status = x.nilai === null ? "kosong" : "ok"; }
+    renderScan();
+  });
+  $("scan-hasil").addEventListener("click", async (e) => {
+    const b = e.target.closest("button[data-aksi]"); if (!b) return;
+    const id = b.dataset.id;
+    if (b.dataset.aksi === "scan-buang") { delete scanPeserta[id]; renderScan(); return; }
+    if (b.dataset.aksi !== "scan-simpan") return;
+    const g = scanPeserta[id]; if (!g) return;
+    const sds = {}, srq = {};
+    g.sds.forEach(x => { sds[x.no] = x.nilai + 1; }); g.srq.forEach(x => { srq[x.no] = x.nilai === 0 ? "Y" : "T"; });
+    b.disabled = true; b.textContent = "Menyimpan…";
+    const r = await api("kirim", { metode: "terdaftar", id, password: g.rec.password, identitas: g.rec.identitas, sds, srq, tandaTangan: g.ttd, pernyataan: true });
+    if (!r.ok) { b.disabled = false; b.textContent = "Simpan ke data peserta"; alert("Gagal disimpan: " + r.pesan); return; }
+    delete scanPeserta[id]; renderScan(); await muatData();
+    pesanDi($("scan-status"), `Tersimpan: ${g.rec.identitas.nama}. Data peserta sudah diperbarui.`, "ok");
+  });
+  $("scan-baca").addEventListener("click", async () => {
+    const files = [...$("scan-file").files]; if (!files.length) return pesanDi($("scan-status"), "Pilih file scan dulu.", "err");
+    if (typeof jsQR !== "function") return pesanDi($("scan-status"), "Library pembaca QR belum termuat. Periksa koneksi internet lalu muat ulang.", "err");
+    $("scan-baca").disabled = true; const gagal = [];
+    for (let k = 0; k < files.length; k++) {
+      pesanDi($("scan-status"), `Membaca ${k + 1} dari ${files.length}: ${files[k].name}…`, "ok");
+      const h = await bacaFileScan(files[k]);
+      if (h.error) { gagal.push(`${h.nama}: ${h.error}`); continue; }
+      const g = scanPeserta[h.id] || (scanPeserta[h.id] = { rec: h.rec, halaman: {}, files: [], sds: [], srq: [], ttd: null });
+      g.halaman[h.halaman] = true; g.files.push(h.nama);
+      if (h.halaman === 1) { g.ttd = h.ttd || null; g.sds = [...g.sds.filter(x => x.no > 9), ...h.sds.filter(x => x.no <= 9)]; }
+      else if (h.halaman === 2) { g.sds = [...g.sds.filter(x => x.no <= 9), ...h.sds.filter(x => x.no > 9)]; }
+      else { g.srq = h.srq; }
+      if (h.halaman === 1 && h.ttd) g.ttd = h.ttd;
+    }
+    $("scan-baca").disabled = false;
+    renderScan();
+    pesanDi($("scan-status"), `Selesai. ${Object.keys(scanPeserta).length} peserta terbaca.` + (gagal.length ? " Gagal dibaca: " + gagal.join(" | ") : ""), gagal.length ? "err" : "ok");
   });
 
   // ====== REKAP FORMAT UNIPACK ======
