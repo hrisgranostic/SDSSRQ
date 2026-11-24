@@ -172,7 +172,7 @@
   .hal h1 { font-size: 12pt; text-align: center; margin: 1mm 0 3mm; text-decoration: underline; }
   .hal .ident { display: flex; gap: 8mm; align-items: stretch; margin-bottom: 4mm; }
   .hal .ident table { flex: 1; border-collapse: collapse; font-size: 10pt; }
-  .hal .ident td { padding: 1.4mm 0; vertical-align: bottom; }
+  .hal .ident td { padding: 1.4mm 0; vertical-align: top; }
   .hal .ident td.k { width: 36mm; font-weight: 700; white-space: nowrap; }
   .hal .ident td.t { width: 3mm; }
   .hal .ident td.v { border-bottom: 1px dotted #555; }
@@ -670,7 +670,7 @@
     const r = await api("list");
     if (!r.ok) { if (r.sesi !== false) alert(r.pesan); return; }
     data = r.data || [];
-    isiPilihanPerusahaan(); renderDashboard(); renderPeserta(); renderHasil(); infoRekap();
+    isiPilihanPerusahaan(); renderDashboard(); renderPeserta(); renderHasil(); infoRekap(); infoKertas();
     if (perAktif && !$("tab-perusahaan").hidden) renderPerusahaan();
   }
 
@@ -1108,7 +1108,7 @@
   const NAMA_KRIT = "Kriteria SDS-SRQ";
   const KOL = (n) => { let s = ""; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
   const tglUnipack = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ""); return m ? `${m[1]}-${m[2]}-${m[3]} 00:00:00` : ""; };
-  const namaSheet = (awal, nama) => (awal + nama).replace(/[\[\]:*?\/\\]/g, " ").replace(/\s+/g, " ").trim().slice(0, 31).trim();
+  const namaSheet = (awal, nama) => { const s = (awal + nama).replace(/[\[\]:*?\/\\]/g, " ").replace(/\s+/g, " ").trim(); if (s.length <= 31) return s; const p = s.slice(0, 31), sp = p.lastIndexOf(" "); return (sp > awal.length ? p.slice(0, sp) : p).trim(); };
   // judul kolom dimensi persis seperti file Excel acuan (termasuk ejaan "Konfilk peran")
   const JUDUL_DIM = ["Ketaksaan Peran", "Konfilk peran", "Beban Berlebih Kuantitatif", "Beban Berlebih Kualitatif", "Pengembangan Karir", "Tanggung Jawab Terhadap Orang Lain"];
   const KOL_SOAL_SDS = (n) => KOL(5 + n);   // Soal 1 = kolom F
@@ -1159,10 +1159,11 @@
       isiSel(ws.getCell(r, 1), k + 1, { teks: true }); isiSel(ws.getCell(r, 2), String(i.nip || ""), { teks: true });
       isiSel(ws.getCell(r, 3), String(i.nama || ""), { teks: true }); isiSel(ws.getCell(r, 4), String(i.perusahaan || ""));
       isiSel(ws.getCell(r, 5), tglUnipack(i.tglLahir), { teks: true });
-      for (let n = 1; n <= 30; n++) isiSel(ws.getCell(r, 5 + n), p.sds[n], { tengah: true });
+      const nilai = (n) => { const v = parseInt(p.sds[n], 10); return v >= 1 && v <= 7 ? v : null; };
+      for (let n = 1; n <= 30; n++) isiSel(ws.getCell(r, 5 + n), nilai(n), { tengah: true });
       let total = 0;
       DIMENSI.forEach((d, di) => {
-        const sel = d.soal.map(n => KOL_SOAL_SDS(n) + r), skor = d.soal.reduce((s, n) => s + p.sds[n], 0); total += skor;
+        const sel = d.soal.map(n => KOL_SOAL_SDS(n) + r), skor = d.soal.reduce((s, n) => s + (nilai(n) || 0), 0); total += skor;
         const kS = KOL(36 + di * 2), kN = KOL(37 + di * 2);
         isiSel(ws.getCell(r, 36 + di * 2), { formula: `IF(COUNT(${sel.join(",")})=0,"",SUM(${sel.join(",")}))`, result: skor }, { tengah: true });
         isiSel(ws.getCell(r, 37 + di * 2), { formula: `IF(${kS}${r}="","",LOOKUP(${kS}${r},${rngKat},${rngNar}))`, result: katSDS(skor) }, { tengah: true });
@@ -1188,7 +1189,7 @@
       isiSel(ws.getCell(r, 3), String(i.nama || ""), { teks: true }); isiSel(ws.getCell(r, 4), String(i.perusahaan || ""));
       isiSel(ws.getCell(r, 5), tglUnipack(i.tglLahir), { teks: true });
       let ya = 0;
-      for (let n = 1; n <= 20; n++) { const v = p.srq[n] === "Y" ? 1 : 0; ya += v; isiSel(ws.getCell(r, 5 + n), v); }
+      for (let n = 1; n <= 20; n++) { const v = String(p.srq[n]).toUpperCase() === "Y" ? 1 : 0; ya += v; isiSel(ws.getCell(r, 5 + n), v); }
       isiSel(ws.getCell(r, 26), { formula: `IF(COUNT(F${r}:Y${r})=0,"",SUM(F${r}:Y${r}))`, result: ya });
       isiSel(ws.getCell(r, 27), { formula: `IF(Z${r}="","",LOOKUP(Z${r},${rngB},${rngK}))`, result: ya >= 6 ? KRITERIA_SRQ[1].kesimpulan : KRITERIA_SRQ[0].kesimpulan });
     });
