@@ -164,7 +164,7 @@
       <ol>
         <li>Pilih <b>Masuk dengan NIP dan password</b>.</li>
         <li>Isi NIP dan password dari panitia (bisa tanggal lahir format <b>DDMMYYYY</b>, misalnya lahir 5 Mei 1990 menjadi <b>05051990</b>, atau kode acak 8 karakter). Huruf besar/kecil tidak berpengaruh.</li>
-        <li>Identitas terisi otomatis dan tidak bisa diubah. Jika ada yang salah, hubungi admin. Isi No. RM bila ada.</li>
+        <li>Identitas terisi otomatis dan tidak bisa diubah. Jika ada yang salah, hubungi admin.</li>
       </ol>
       <h3>Jika mengisi mandiri</h3>
       <ol>
@@ -212,7 +212,6 @@
         <h2>Identitas</h2>
         <div class="field"><label for="nama">Nama</label><input type="text" id="nama" autocomplete="off"></div>
         <div class="field"><label for="nip">NIP / NIK</label><input type="text" id="nip" autocomplete="off"></div>
-        <div class="field"><label for="norm">No. RM (jika ada)</label><input type="text" id="norm" autocomplete="off"></div>
         <div class="field"><label for="tgl">Tgl Lahir</label><input type="date" id="tgl"></div>
         <div class="field"><label for="perusahaan">Perusahaan</label><input type="text" id="perusahaan" autocomplete="off"></div>
         <div class="field"><label for="tglIsi">Tanggal Pengisian</label><input type="date" id="tglIsi" readonly></div>
@@ -266,9 +265,6 @@
         <p id="ucapWaktu" class="intro"></p>
         <p class="intro">Jawaban Anda sudah lengkap dan tersimpan. Kami menghargai waktu dan kejujuran Anda dalam mengisi survei ini. Semoga Anda senantiasa sehat dan sukses dalam bekerja.</p>
       </div>
-      <h3 style="margin:14px 0 4px;color:var(--dark)">Ringkasan hasil Anda</h3>
-      <p class="status" id="statusSRQ"></p>
-      <p class="status" id="statusSDS"></p>
       <div class="aksi"><button type="button" class="btn sekunder" data-kembali="layar-cara">Selesai</button></div>
     </section>
   </section>
@@ -326,24 +322,6 @@
     "Apakah Anda merasa tidak berharga?", "Apakah Anda mempunyai pikiran untuk mengakhiri hidup Anda?",
     "Apakah Anda merasa lelah sepanjang waktu?", "Apakah Anda merasa tidak enak di perut?", "Apakah Anda mudah lelah?"
   ];
-
-  // Penilaian (sama dengan rumus Excel SDS-SRQ), dipakai hanya untuk menampilkan hasil ke peserta
-  const DIMENSI = [
-    { nama: "Ketaksaan Peran", soal: [1, 7, 13, 19, 25] }, { nama: "Konflik Peran", soal: [2, 8, 14, 20, 26] },
-    { nama: "Beban Berlebih Kuantitatif", soal: [3, 9, 15, 21, 27] }, { nama: "Beban Berlebih Kualitatif", soal: [4, 10, 16, 22, 28] },
-    { nama: "Pengembangan Karir", soal: [5, 11, 17, 23, 29] }, { nama: "Tanggung Jawab terhadap Orang Lain", soal: [6, 12, 18, 24, 30] }
-  ];
-  function kategoriSDS(s) { return s >= 25 ? "Stres Berat" : s >= 10 ? "Stres Sedang" : "Stres Ringan"; }
-  function hitungPenilaian(sds, srq) {
-    const dimensi = DIMENSI.map(d => { const skor = d.soal.reduce((a, n) => a + (sds[n] || 0), 0); return { nama: d.nama, skor, kategori: kategoriSDS(skor) }; });
-    const jumlahY = Object.values(srq).filter(v => v === "Y").length;
-    return {
-      dimensi, total: Object.values(sds).reduce((a, b) => a + b, 0),
-      kelaikanSDS: dimensi.some(d => d.kategori !== "Stres Ringan") ? "Fit with Notice" : "Fit to Work",
-      jumlahY, srqKes: jumlahY >= 6 ? "Terindikasi gangguan mental emosional" : "Tidak terindikasi gangguan mental emosional",
-      kelaikanSRQ: jumlahY >= 6 ? "Fit with Notice" : "Fit to Work"
-    };
-  }
 
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -406,10 +384,9 @@
     document.querySelectorAll("tr.salah").forEach(tr => tr.classList.remove("salah"));
     $("kartu-pernyataan").classList.remove("salah"); $("pesan").hidden = true; $("hasil").hidden = true; $("form").hidden = false; $("btn-kirim").disabled = false;
     const terkunci = ctx.metode === "terdaftar";
-    $("nama").value = ident.nama || ""; $("nip").value = ident.nip || ""; $("norm").value = ident.norm || "";
+    $("nama").value = ident.nama || ""; $("nip").value = ident.nip || "";
     $("tgl").value = ident.tglLahir || ""; $("perusahaan").value = ident.perusahaan || "";
     ["nama", "nip", "tgl", "perusahaan"].forEach(f => { $(f).readOnly = terkunci; });
-    $("norm").readOnly = false;
     $("tglIsi").value = new Date().toISOString().slice(0, 10);
     tampil("layar-pengisi");
   }
@@ -432,7 +409,7 @@
     e.preventDefault();
     if (!konteks) return;
     document.querySelectorAll("tr.salah").forEach(tr => tr.classList.remove("salah"));
-    const identitas = { nama: $("nama").value.trim(), nip: $("nip").value.trim(), norm: $("norm").value.trim(), tglLahir: $("tgl").value, perusahaan: $("perusahaan").value.trim() };
+    const identitas = { nama: $("nama").value.trim(), nip: $("nip").value.trim(), tglLahir: $("tgl").value, perusahaan: $("perusahaan").value.trim() };
     const kurang = [];
     if (!identitas.nama) kurang.push("Nama"); if (!identitas.nip) kurang.push("NIP"); if (!identitas.tglLahir) kurang.push("Tgl Lahir");
     if (!identitas.perusahaan) kurang.push("Perusahaan"); if (!adaTTD) kurang.push("Tanda tangan");
@@ -450,9 +427,6 @@
     $("btn-kirim").disabled = true;
     const r = await api("kirim", { metode: konteks.metode, id: konteks.id, password: konteks.password, identitas, sds, srq, tandaTangan: ttdKecil(), pernyataan: true });
     if (!r.ok) { $("btn-kirim").disabled = false; return pesanDi($("pesan"), r.pesan, "err"); }
-    const n = hitungPenilaian(sds, srq);
-    $("statusSRQ").innerHTML = `<b>SRQ-20:</b> ${n.jumlahY} Ya → ${esc(n.srqKes)} → <b>${n.kelaikanSRQ}</b>`;
-    $("statusSDS").innerHTML = `<b>SDS 30:</b> total ${n.total} → <b>${n.kelaikanSDS}</b><br><small>` + n.dimensi.map(d => `${esc(d.nama)}: ${d.skor} (${esc(d.kategori)})`).join(" · ") + `</small>`;
     $("ucapNama").textContent = identitas.nama;
     $("ucapWaktu").textContent = "Dikirim pada " + new Date().toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short" });
     $("form").hidden = true; $("kepala-form").hidden = true; $("hasil").hidden = false; window.scrollTo(0, 0);
