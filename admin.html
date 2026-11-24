@@ -453,8 +453,10 @@
       <div class="toolbar" style="margin-top:18px"><h3 style="margin:0">Daftar peserta</h3><input type="search" id="per-cari" placeholder="Cari nama / NIP" style="width:220px"></div>
       <h3 id="per-j-belum"></h3>
       <div class="table-wrap"><table><thead><tr><th>No</th><th>Nama</th><th>NIP</th><th>Tgl Lahir</th><th>Password</th><th>Sumber</th><th>Aksi</th></tr></thead><tbody id="per-belum-tb"></tbody></table></div>
+      <div class="halaman" id="hal-per-belum"></div>
       <h3 id="per-j-sudah"></h3>
       <div class="table-wrap"><table><thead><tr><th>No</th><th>Nama</th><th>NIP</th><th>Waktu mengisi</th><th>Sumber</th><th>SRQ (Ya)</th><th>Kelaikan SRQ</th><th>SDS total</th><th>Kelaikan SDS</th><th>Aksi</th></tr></thead><tbody id="per-sudah-tb"></tbody></table></div>
+      <div class="halaman" id="hal-per-sudah"></div>
       <h3 style="margin-top:22px">Tentang Aplikasi</h3>
       <p class="tentang">
         <span>Survei Diagnosis SDS &amp; SRQ © 2026 PT Persada Medika Utama.</span>
@@ -865,9 +867,9 @@
   });
 
   // ====== DASHBOARD PER PERUSAHAAN ======
-  let perAktif = "", asalPer = "";
+  let perAktif = "", asalPer = "", halBelum = 1, halSudah = 1;
   const waktuIndo = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }); };
-  function bukaPerusahaan(k) { perAktif = k; $("per-cari").value = ""; renderPerusahaan(); pilihTab("tab-perusahaan"); window.scrollTo(0, 0); }
+  function bukaPerusahaan(k) { perAktif = k; halBelum = 1; halSudah = 1; $("per-cari").value = ""; renderPerusahaan(); pilihTab("tab-perusahaan"); window.scrollTo(0, 0); }
   function siapkanTambah(nama) {
     asalPer = kunciPer(nama); $("t-per").value = nama; pilihTab("tab-tambah"); $("t-nama").focus();
     const b = $("btn-kembali-per"); b.hidden = !data.some(r => kunciPer(r.identitas.perusahaan) === asalPer);
@@ -898,19 +900,24 @@
 
     const q = $("per-cari").value.trim().toLowerCase(), cocok = (r) => !q || (r.identitas.nama + " " + r.identitas.nip).toLowerCase().includes(q);
     const belum = reg.filter(r => r.status !== "selesai" && cocok(r)), sudah = nil.filter(x => cocok(x.r));
+    const maksBelum = Math.max(1, Math.ceil(belum.length / UKURAN_HAL)), maksSudah = Math.max(1, Math.ceil(sudah.length / UKURAN_HAL));
+    if (halBelum > maksBelum) halBelum = maksBelum; if (halSudah > maksSudah) halSudah = maksSudah;
+    const awalBelum = (halBelum - 1) * UKURAN_HAL, awalSudah = (halSudah - 1) * UKURAN_HAL;
     $("per-j-belum").textContent = `Belum mengisi (${belum.length})`; $("per-j-sudah").textContent = `Sudah mengisi (${sudah.length})`;
-    $("per-belum-tb").innerHTML = belum.map((r, i) => `<tr><td class="no">${i + 1}</td><td>${esc(r.identitas.nama)}</td><td>${esc(r.identitas.nip)}</td><td>${esc(tglIndo(r.identitas.tglLahir))}</td>
+    $("per-belum-tb").innerHTML = belum.slice(awalBelum, awalBelum + UKURAN_HAL).map((r, i) => `<tr><td class="no">${awalBelum + i + 1}</td><td>${esc(r.identitas.nama)}</td><td>${esc(r.identitas.nip)}</td><td>${esc(tglIndo(r.identitas.tglLahir))}</td>
       <td>${r.password ? `<code class="pw">${esc(r.password)}</code>` : "-"}</td><td>${badgeSumber(r.sumber)}</td>
       <td style="white-space:nowrap"><button type="button" class="btn sekunder kecil" data-aksi="edit" data-id="${esc(r.id)}">Edit identitas</button>
       <button type="button" class="btn bahaya kecil" data-aksi="hapus" data-id="${esc(r.id)}">Hapus</button></td></tr>`).join("") || `<tr><td colspan="7" class="intro">${q ? "Tidak ada yang cocok." : "Semua peserta terdaftar sudah mengisi."}</td></tr>`;
-    $("per-sudah-tb").innerHTML = sudah.map(({ r, n }, i) => `<tr><td class="no">${i + 1}</td><td>${esc(r.identitas.nama)}</td><td>${esc(r.identitas.nip)}</td><td>${esc(waktuIndo(r.dikirimPada))}</td><td>${badgeSumber(r.sumber)}</td>
+    $("per-sudah-tb").innerHTML = sudah.slice(awalSudah, awalSudah + UKURAN_HAL).map(({ r, n }, i) => `<tr><td class="no">${awalSudah + i + 1}</td><td>${esc(r.identitas.nama)}</td><td>${esc(r.identitas.nip)}</td><td>${esc(waktuIndo(r.dikirimPada))}</td><td>${badgeSumber(r.sumber)}</td>
       <td class="c">${n.srqJumlahY}</td><td>${badge(n.kelaikanSRQ, n.kelaikanSRQ === "Fit to Work" ? "b-ok" : "b-warn")}</td><td class="c">${n.totalSDS ?? ""}</td>
       <td>${badge(n.kelaikanSDS, n.kelaikanSDS === "Fit to Work" ? "b-ok" : "b-warn")}</td>
       <td style="white-space:nowrap"><button type="button" class="btn sekunder kecil" data-aksi="lihat" data-id="${esc(r.id)}">Lihat</button>
       <button type="button" class="btn sekunder kecil" data-aksi="edit" data-id="${esc(r.id)}">Edit identitas</button>
       ${isSuper() ? `<button type="button" class="btn bahaya kecil" data-aksi="hapus" data-id="${esc(r.id)}">Hapus</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="10" class="intro">${q ? "Tidak ada yang cocok." : "Belum ada yang mengisi."}</td></tr>`;
+    pager($("hal-per-belum"), belum.length, halBelum, (h) => { halBelum = h; renderPerusahaan(); });
+    pager($("hal-per-sudah"), sudah.length, halSudah, (h) => { halSudah = h; renderPerusahaan(); });
   }
-  $("per-cari").addEventListener("input", () => renderPerusahaan());
+  $("per-cari").addEventListener("input", () => { halBelum = 1; halSudah = 1; renderPerusahaan(); });
   $("per-kembali").addEventListener("click", () => pilihTab("tab-dashboard"));
   $("per-tambah").addEventListener("click", () => { const r = data.find(x => kunciPer(x.identitas.perusahaan) === perAktif); siapkanTambah(r ? r.identitas.perusahaan.trim() : ""); });
   $("per-belum").addEventListener("click", () => unduhDaftar(data.filter(x => x.sumber !== "mandiri" && x.status !== "selesai" && kunciPer(x.identitas.perusahaan) === perAktif), namaFile("xlsx", tglHariIni(), "Belum Mengisi", namaPer(perAktif))));
