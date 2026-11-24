@@ -381,8 +381,9 @@
   const KUNCI_DRAF = () => {
     if (!konteks) return null;
     if (konteks.metode === "terdaftar") return "sdssrq-draf-" + konteks.id;
+    // mandiri: kunci per NIP; sebelum NIP diisi, pakai kunci sementara supaya jawaban tidak hilang
     const nip = $("nip").value.trim().toUpperCase();
-    return nip ? "sdssrq-draf-m-" + nip : null;
+    return "sdssrq-draf-m-" + (nip || "tanpa-nip");
   };
   function simpanDraf() {
     try {
@@ -392,6 +393,14 @@
       SDS.forEach((_, i) => { const v = fd.get("sds" + (i + 1)); if (v) d.sds[i + 1] = v; });
       SRQ.forEach((_, i) => { const v = fd.get("srq" + (i + 1)); if (v) d.srq[i + 1] = v; });
       localStorage.setItem(k, JSON.stringify(d));
+      // jawaban sementara sudah pindah ke kunci NIP -> hapus yang sementara agar tidak terbawa ke peserta lain
+      if (konteks.metode === "mandiri" && k !== "sdssrq-draf-m-tanpa-nip") {
+        localStorage.removeItem("sdssrq-draf-m-tanpa-nip");
+        // sisa dari NIP yang sedang diketik (mis. "MX", "MX3") ikut dibersihkan
+        const nipNow = $("nip").value.trim().toUpperCase();
+        Object.keys(localStorage).forEach(key => { const s = key.slice("sdssrq-draf-m-".length);
+          if (key.startsWith("sdssrq-draf-m-") && key !== k && s && nipNow.startsWith(s)) localStorage.removeItem(key); });
+      }
     } catch (_) { /* browser menolak penyimpanan (mis. mode privat): form tetap berjalan */ }
   }
   function pulihDraf() {
@@ -425,7 +434,7 @@
     ["nama", "nip", "tgl", "perusahaan"].forEach(f => { $(f).readOnly = terkunci; });
     $("tglIsi").value = new Date().toISOString().slice(0, 10);
     tampil("layar-pengisi");
-    if (ctx.metode === "terdaftar" && pulihDraf()) pesanDi($("pesan"), PESAN_PULIH, "info");
+    if (pulihDraf()) pesanDi($("pesan"), PESAN_PULIH, "info");
   }
   document.querySelectorAll("[data-kembali]").forEach(b => b.addEventListener("click", () => tampil(b.dataset.kembali)));
   $("cara-mandiri").addEventListener("click", () => bukaForm({ metode: "mandiri" }, {}));
