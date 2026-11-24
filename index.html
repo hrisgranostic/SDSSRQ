@@ -368,7 +368,8 @@
   cv.addEventListener("pointermove", (e) => { if (!gambar) return; const p = pos(e); cx.lineTo(p.x, p.y); cx.stroke(); adaTTD = true; });
   ["pointerup", "pointerleave", "pointercancel"].forEach(ev => cv.addEventListener(ev, () => { gambar = false; }));
   const kosongTTD = () => { cx.clearRect(0, 0, cv.width, cv.height); adaTTD = false; };
-  $("hapusTtd").addEventListener("click", kosongTTD);
+  $("hapusTtd").addEventListener("click", () => { kosongTTD(); simpanDraf(); });
+  cv.addEventListener("pointerup", simpanDraf);
   // kecilkan supaya muat di sel Google Sheets
   function ttdKecil() {
     const o = document.createElement("canvas"); o.width = 420; o.height = 160;
@@ -376,10 +377,45 @@
     return o.toDataURL("image/png");
   }
 
+  // ===== Draf otomatis (disimpan di browser peserta, bukan di server) =====
+  const KUNCI_DRAF = () => {
+    if (!konteks) return null;
+    if (konteks.metode === "terdaftar") return "sdssrq-draf-" + konteks.id;
+    const nip = $("nip").value.trim().toUpperCase();
+    return nip ? "sdssrq-draf-m-" + nip : null;
+  };
+  function simpanDraf() {
+    try {
+      const k = KUNCI_DRAF(); if (!k) return;
+      const fd = new FormData($("form")), d = { sds: {}, srq: {}, pernyataan: $("pernyataan").checked, ttd: adaTTD ? cv.toDataURL("image/png") : null,
+        identitas: { nama: $("nama").value, nip: $("nip").value, tgl: $("tgl").value, perusahaan: $("perusahaan").value } };
+      SDS.forEach((_, i) => { const v = fd.get("sds" + (i + 1)); if (v) d.sds[i + 1] = v; });
+      SRQ.forEach((_, i) => { const v = fd.get("srq" + (i + 1)); if (v) d.srq[i + 1] = v; });
+      localStorage.setItem(k, JSON.stringify(d));
+    } catch (_) { /* browser menolak penyimpanan (mis. mode privat): form tetap berjalan */ }
+  }
+  function pulihDraf() {
+    try {
+      const k = KUNCI_DRAF(); if (!k) return false;
+      const raw = localStorage.getItem(k); if (!raw) return false;
+      const d = JSON.parse(raw);
+      Object.entries(d.sds || {}).forEach(([n, v]) => { const el = document.querySelector(`[name="sds${n}"][value="${v}"]`); if (el) el.checked = true; });
+      Object.entries(d.srq || {}).forEach(([n, v]) => { const el = document.querySelector(`[name="srq${n}"][value="${v}"]`); if (el) el.checked = true; });
+      $("pernyataan").checked = !!d.pernyataan;
+      if (konteks.metode === "mandiri" && d.identitas) {
+        $("nama").value = d.identitas.nama || ""; $("tgl").value = d.identitas.tgl || ""; $("perusahaan").value = d.identitas.perusahaan || "";
+      }
+      if (d.ttd) { const img = new Image(); img.onload = () => { kosongTTD(); cx.drawImage(img, 0, 0, cv.width, cv.height); adaTTD = true; }; img.src = d.ttd; }
+      return true;
+    } catch (_) { return false; }
+  }
+  let drafDipulihkan = "";
+  const PESAN_PULIH = "Jawaban yang belum sempat terkirim dari browser ini sudah dipulihkan. Periksa lagi sebelum menekan Kirim.";
+
   // alur
   let konteks = null; // { metode: 'mandiri' | 'terdaftar', id, password }
   function bukaForm(ctx, ident) {
-    konteks = ctx;
+    konteks = ctx; drafDipulihkan = "";
     $("form").reset(); kosongTTD(); $("kepala-form").hidden = false;
     document.querySelectorAll("tr.salah").forEach(tr => tr.classList.remove("salah"));
     $("kartu-pernyataan").classList.remove("salah"); $("pesan").hidden = true; $("hasil").hidden = true; $("form").hidden = false; $("btn-kirim").disabled = false;
@@ -389,9 +425,15 @@
     ["nama", "nip", "tgl", "perusahaan"].forEach(f => { $(f).readOnly = terkunci; });
     $("tglIsi").value = new Date().toISOString().slice(0, 10);
     tampil("layar-pengisi");
+    if (ctx.metode === "terdaftar" && pulihDraf()) pesanDi($("pesan"), PESAN_PULIH, "info");
   }
   document.querySelectorAll("[data-kembali]").forEach(b => b.addEventListener("click", () => tampil(b.dataset.kembali)));
   $("cara-mandiri").addEventListener("click", () => bukaForm({ metode: "mandiri" }, {}));
+  // mandiri: draf dipulihkan begitu NIP yang sudah pernah dipakai diketik lengkap (sekali per NIP)
+  $("nip").addEventListener("input", () => {
+    const k = KUNCI_DRAF();
+    if (konteks && konteks.metode === "mandiri" && k && k !== drafDipulihkan && pulihDraf()) { drafDipulihkan = k; pesanDi($("pesan"), PESAN_PULIH, "info"); }
+  });
   $("cara-masuk").addEventListener("click", () => { $("form-masuk").reset(); $("pesan-masuk").hidden = true; tampil("layar-masuk"); });
 
   $("form-masuk").addEventListener("submit", async (e) => {
@@ -404,6 +446,9 @@
     if (!r.ok) return pesanDi($("pesan-masuk"), r.pesan, "err");
     bukaForm({ metode: "terdaftar", id: r.id, password }, r.identitas);
   });
+
+  $("form").addEventListener("input", simpanDraf);
+  $("form").addEventListener("change", simpanDraf);
 
   $("form").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -427,6 +472,7 @@
     $("btn-kirim").disabled = true;
     const r = await api("kirim", { metode: konteks.metode, id: konteks.id, password: konteks.password, identitas, sds, srq, tandaTangan: ttdKecil(), pernyataan: true });
     if (!r.ok) { $("btn-kirim").disabled = false; return pesanDi($("pesan"), r.pesan, "err"); }
+    try { localStorage.removeItem(KUNCI_DRAF()); } catch (_) {}
     $("ucapNama").textContent = identitas.nama;
     $("ucapWaktu").textContent = "Dikirim pada " + new Date().toLocaleString("id-ID", { dateStyle: "full", timeStyle: "short" });
     $("form").hidden = true; $("kepala-form").hidden = true; $("hasil").hidden = false; window.scrollTo(0, 0);
