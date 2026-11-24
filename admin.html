@@ -193,7 +193,7 @@
   .hal table.tb td.no { text-align: center; width: 9mm; }
   .hal table.tb td.nil { width: 8mm; }
   .hal table.tb.sds td { height: 9mm; font-size: 9.5pt; line-height: 1.2; padding-top: .6mm; padding-bottom: .6mm; }
-  .hal table.tb.srq td { height: 7.2mm; font-size: 10pt; }
+  .hal table.tb.srq td { height: 6.4mm; font-size: 10pt; padding-top: .4mm; padding-bottom: .4mm; }
   .hal table.tb.sds.p2 td { height: 8.4mm; font-size: 9pt; line-height: 1.1; padding-top: .4mm; padding-bottom: .4mm; }
   .hal table.tb.srq td.nil { width: 17mm; }
   .hal .nip-kaki { margin-top: 2mm; font-size: 7.5pt; color: #444; text-align: right; }
@@ -1134,7 +1134,13 @@
   $("cetak-kertas").addEventListener("click", () => {
     susunKertas();
     document.body.classList.add("cetak");
-    const selesai = () => { document.body.classList.remove("cetak"); $("area-cetak").innerHTML = ""; window.removeEventListener("afterprint", selesai); };
+    // Nama file hasil cetak (Simpan sebagai PDF) mengikuti judul dokumen: "[tgl] Cetak Form SDS SRQ - [perusahaan]"
+    const judulAsli = document.title;
+    const now = new Date(), dd = String(now.getDate()).padStart(2, "0"), mm = String(now.getMonth() + 1).padStart(2, "0");
+    const opsi = $("k-per").selectedOptions[0];
+    const perusahaan = $("k-per").value && opsi ? opsi.textContent.trim() : "Semua Perusahaan";
+    document.title = `${dd}-${mm}-${now.getFullYear()} Cetak Form SDS SRQ - ${perusahaan}`;
+    const selesai = () => { document.body.classList.remove("cetak"); $("area-cetak").innerHTML = ""; document.title = judulAsli; window.removeEventListener("afterprint", selesai); };
     window.addEventListener("afterprint", selesai);
     setTimeout(() => window.print(), 150);
   });
