@@ -173,7 +173,7 @@
   .hal .ident { display: flex; gap: 8mm; align-items: stretch; margin-bottom: 4mm; }
   .hal .ident table { flex: 1; border-collapse: collapse; font-size: 10pt; }
   .hal .ident td { padding: 1.4mm 0; vertical-align: top; }
-  .hal .ident td.k { width: 36mm; font-weight: 700; white-space: nowrap; }
+  .hal .ident td.k { width: 40mm; font-weight: 700; white-space: nowrap; }
   .hal .ident td.t { width: 3mm; }
   .hal .ident td.v { border-bottom: 1px dotted #555; }
   .hal .ttd { width: 56mm; border: 1.5px solid #000; padding: 1.5mm 2mm; text-align: center; font-size: 9pt; display: flex; flex-direction: column; }
@@ -292,12 +292,12 @@
         <h2>Tambah peserta</h2>
         <p class="intro">Untuk peserta yang belum masuk saat import bulk. Pilih perusahaan yang sudah ada, peserta langsung terhitung di perusahaan itu.</p>
         <form id="form-tambah" novalidate>
-          <div class="field"><label for="t-per">Perusahaan</label><input type="text" id="t-per" list="daftar-per" autocomplete="off"></div>
+          <div class="field"><label for="t-per">Nama Perusahaan</label><input type="text" id="t-per" list="daftar-per" autocomplete="off"></div>
           <datalist id="daftar-per"></datalist>
-          <div class="field"><label for="t-nama">Nama</label><input type="text" id="t-nama" autocomplete="off"></div>
+          <div class="field"><label for="t-nama">Nama Lengkap</label><input type="text" id="t-nama" autocomplete="off"></div>
           <div class="field"><label for="t-nip">NIP / NIK</label><input type="text" id="t-nip" autocomplete="off"></div>
           <div class="field"><label for="t-norm">No. RM (opsional)</label><input type="text" id="t-norm" autocomplete="off"></div>
-          <div class="field"><label for="t-tgl">Tgl Lahir</label><input type="date" id="t-tgl"></div>
+          <div class="field"><label for="t-tgl">Tanggal Lahir</label><input type="date" id="t-tgl"></div>
           <div class="field"><label for="t-mode">Jenis password</label><select id="t-mode"><option value="tgl">Tanggal lahir (DDMMYYYY)</option><option value="acak">Acak (8 karakter)</option></select></div>
           <div class="aksi"><button type="submit" class="btn" id="btn-tambah">Daftarkan</button><button type="button" class="btn sekunder" id="btn-kembali-per" hidden></button></div>
           <div id="pesan-tambah" class="pesan" hidden></div>
@@ -313,7 +313,7 @@
       <div class="aksi"><button type="button" class="btn sekunder" id="unduh-template">Unduh template (.xlsx)</button></div>
       <div class="field" style="margin-top:14px;max-width:640px"><label for="i-file">File</label><input type="file" id="i-file" accept=".xlsx,.xls,.csv"></div>
       <div class="field" style="max-width:640px"><label for="i-mode">Jenis password</label><select id="i-mode"><option value="tgl">Tanggal lahir (DDMMYYYY)</option><option value="acak">Acak (8 karakter)</option></select></div>
-      <div class="field" style="max-width:640px"><label for="i-per">Perusahaan (jika kolom kosong)</label><input type="text" id="i-per" list="daftar-per" autocomplete="off"></div>
+      <div class="field" style="max-width:640px"><label for="i-per">Nama Perusahaan (jika kolom kosong)</label><input type="text" id="i-per" list="daftar-per" autocomplete="off"></div>
       <div id="pratinjau"></div>
       <div class="aksi"><button type="button" class="btn" id="btn-import" disabled>Import</button></div>
       <div id="pesan-import" class="pesan" hidden></div>
@@ -324,7 +324,7 @@
     <div id="tab-rekap" class="card" hidden>
       <h2>Rekapitulasi</h2>
       <p class="intro">Formatnya <b>sama persis dengan file Excel SDS-SRQ</b> (3 sheet: Kriteria SDS-SRQ, SDS 30, SRQ 20, lengkap dengan kolom Soal dan rumus), sehingga bisa langsung diunggah ke MCU Processor tanpa diubah.</p>
-      <div class="field" style="max-width:520px"><label for="r-per">Perusahaan</label><select id="r-per"></select></div>
+      <div class="field" style="max-width:520px"><label for="r-per">Nama Perusahaan</label><select id="r-per"></select></div>
       <div class="aksi">
         <button type="button" class="btn" id="unduh-rekap">Unduh Rekap (.xlsx)</button>
         <button type="button" class="btn sekunder" id="unduh-csv">Unduh jawaban per soal (.csv)</button>
@@ -337,11 +337,11 @@
       <h2>Form Kertas (cadangan peserta yang kesulitan isi online)</h2>
       <p class="intro">Mencetak formulir SDS 30 + SRQ 20 di kertas A4. Tiap peserta mendapat 3 halaman (SDS 2 halaman, SRQ 1 halaman). Pada kotak cetak, pilih <b>Simpan sebagai PDF</b> bila ingin disimpan dulu.</p>
       <div class="kertas-opsi">
-        <label class="pil"><input type="radio" name="k-mode" value="nama" checked><span>Sudah terisi nama peserta<small>Nama, NIP, tanggal lahir (beserta usia), dan perusahaan otomatis dari data peserta (bulk import atau tambah 1-1). Peserta tinggal mencentang jawaban dan tanda tangan.</small></span></label>
+        <label class="pil"><input type="radio" name="k-mode" value="nama" checked><span>Sudah terisi nama peserta<small>Nama lengkap, NIP, tanggal lahir (beserta usia), dan nama perusahaan otomatis dari data peserta (bulk import atau tambah 1-1). Peserta tinggal mencentang jawaban dan tanda tangan.</small></span></label>
         <label class="pil"><input type="radio" name="k-mode" value="kosong"><span>Kosong (diisi tangan)<small>Identitas ditulis sendiri oleh peserta.</small></span></label>
       </div>
       <div id="k-opsi-nama" class="kertas-opsi">
-        <div class="field"><label for="k-per">Perusahaan</label><select id="k-per"></select></div>
+        <div class="field"><label for="k-per">Nama Perusahaan</label><select id="k-per"></select></div>
         <label class="pil"><input type="checkbox" id="k-belum" checked><span>Hanya yang belum mengisi online<small>Hilangkan centang bila ingin mencetak semua peserta.</small></span></label>
       </div>
       <div id="k-opsi-kosong" class="kertas-opsi" hidden>
@@ -474,7 +474,7 @@
       <h3>Tambah akun</h3>
       <form id="form-user" novalidate style="max-width:520px">
         <div class="field"><label for="u-user">Username</label><input type="text" id="u-user" autocomplete="off"></div>
-        <div class="field"><label for="u-nama">Nama</label><input type="text" id="u-nama" autocomplete="off"></div>
+        <div class="field"><label for="u-nama">Nama Lengkap</label><input type="text" id="u-nama" autocomplete="off"></div>
         <div class="field"><label for="u-pw">Kata sandi</label><input type="text" id="u-pw" autocomplete="off" placeholder="minimal 6 karakter"></div>
         <div class="field"><label for="u-peran">Peran</label><select id="u-peran"><option value="admin">Admin</option><option value="super">Super Admin</option></select></div>
         <div class="aksi"><button type="submit" class="btn">Tambah akun</button></div>
@@ -811,8 +811,8 @@
     const sdsRows = SDS.map((t, k) => `<tr><td class="no">${k + 1}</td><td>${esc(t)}</td><td class="c">${esc(r.sds?.[k + 1] ?? "")}</td></tr>`).join("");
     const srqRows = SRQ.map((t, k) => `<tr><td class="no">${k + 1}</td><td>${esc(t)}</td><td class="c">${esc(r.srq?.[k + 1] ?? "")}</td></tr>`).join("");
     bukaModal(`<div class="toolbar"><h2 style="margin:0">Detail Hasil</h2><button type="button" class="btn sekunder kecil" data-tutup>Tutup</button></div>
-      <div class="kv"><div>Nama</div><div>${esc(i.nama)}</div><div>NIP</div><div>${esc(i.nip)}</div><div>No. RM</div><div>${esc(i.norm)}</div>
-        <div>Tgl Lahir</div><div>${esc(tglIndo(i.tglLahir))}</div><div>Perusahaan</div><div>${esc(i.perusahaan)}</div>
+      <div class="kv"><div>Nama Lengkap</div><div>${esc(i.nama)}</div><div>NIP</div><div>${esc(i.nip)}</div><div>No. RM</div><div>${esc(i.norm)}</div>
+        <div>Tanggal Lahir</div><div>${esc(tglIndo(i.tglLahir))}</div><div>Nama Perusahaan</div><div>${esc(i.perusahaan)}</div>
         <div>Pernyataan pengisi</div><div>${r.pernyataan ? "Menyatakan mengisi sendiri dengan jujur (dicentang saat mengirim)" : "-"}</div>
         <div>SRQ-20</div><div>${n.srqJumlahY} Ya → ${esc(n.srqKesimpulan)} → <b>${n.kelaikanSRQ}</b></div>
         <div>SDS 30</div><div>Total ${n.totalSDS} → <b>${n.kelaikanSDS}</b></div></div>
@@ -828,11 +828,11 @@
     bukaModal(`<div class="toolbar"><h2 style="margin:0">Edit identitas</h2><button type="button" class="btn sekunder kecil" data-tutup>Tutup</button></div>
       <p class="kecil-teks">Hanya identitas yang bisa diubah. Jawaban dan tanda tangan tidak tersentuh. Password peserta tidak berubah.</p>
       <form id="form-edit" novalidate>
-        <div class="field"><label>Nama</label><input type="text" id="e-nama" value="${esc(i.nama)}"></div>
+        <div class="field"><label>Nama Lengkap</label><input type="text" id="e-nama" value="${esc(i.nama)}"></div>
         <div class="field"><label>NIP / NIK</label><input type="text" id="e-nip" value="${esc(i.nip)}"></div>
         <div class="field"><label>No. RM</label><input type="text" id="e-norm" value="${esc(i.norm)}"></div>
-        <div class="field"><label>Tgl Lahir</label><input type="date" id="e-tgl" value="${esc(i.tglLahir)}"></div>
-        <div class="field"><label>Perusahaan</label><input type="text" id="e-per" list="daftar-per" value="${esc(i.perusahaan)}"></div>
+        <div class="field"><label>Tanggal Lahir</label><input type="date" id="e-tgl" value="${esc(i.tglLahir)}"></div>
+        <div class="field"><label>Nama Perusahaan</label><input type="text" id="e-per" list="daftar-per" value="${esc(i.perusahaan)}"></div>
         <div class="aksi"><button type="submit" class="btn">Simpan</button></div><div id="pesan-edit" class="pesan" hidden></div></form>`, true);
     $("form-edit").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -1057,10 +1057,10 @@
       <h1>${judul}</h1>
       <div class="ident">
         <table>
-          <tr><td class="k">Nama</td><td class="t">:</td><td class="v">${isi(i && i.nama)}</td></tr>
+          <tr><td class="k">Nama Lengkap</td><td class="t">:</td><td class="v">${isi(i && i.nama)}</td></tr>
           <tr><td class="k">NIP</td><td class="t">:</td><td class="v">${isi(i && i.nip)}</td></tr>
-          <tr><td class="k">Tgl Lahir (usia)</td><td class="t">:</td><td class="v">${isi(tgl)}</td></tr>
-          <tr><td class="k">Perusahaan</td><td class="t">:</td><td class="v">${isi(i && i.perusahaan)}</td></tr>
+          <tr><td class="k">Tanggal Lahir (usia)</td><td class="t">:</td><td class="v">${isi(tgl)}</td></tr>
+          <tr><td class="k">Nama Perusahaan</td><td class="t">:</td><td class="v">${isi(i && i.perusahaan)}</td></tr>
           <tr><td class="k">Tanggal Pengisian</td><td class="t">:</td><td class="v">&nbsp;</td></tr>
         </table>
         <div class="ttd">Tanda Tangan Karyawan<small>Dengan tanda tangan ini saya menyatakan formulir ini saya isi sendiri.</small></div>
