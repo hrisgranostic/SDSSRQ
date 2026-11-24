@@ -450,6 +450,7 @@
       </div>
       <h3>Aktivitas terbaru</h3>
       <div class="table-wrap"><table><thead><tr><th>Waktu mengisi</th><th>Nama</th><th>NIP</th><th>Sumber</th><th>Kelaikan SRQ</th><th>Kelaikan SDS</th></tr></thead><tbody id="per-aktivitas"></tbody></table></div>
+      <div class="halaman" id="hal-per-aktivitas"></div>
       <div class="toolbar" style="margin-top:18px"><h3 style="margin:0">Daftar peserta</h3><input type="search" id="per-cari" placeholder="Cari nama / NIP" style="width:220px"></div>
       <h3 id="per-j-belum"></h3>
       <div class="table-wrap"><table><thead><tr><th>No</th><th>Nama</th><th>NIP</th><th>Tgl Lahir</th><th>Password</th><th>Sumber</th><th>Aksi</th></tr></thead><tbody id="per-belum-tb"></tbody></table></div>
@@ -736,8 +737,8 @@
       && (!sm || r.sumber === sm)
       && (!q || (r.identitas.nama + " " + r.identitas.nip).toLowerCase().includes(q)));
   }
-  function pager(el, total, hal, ganti) {
-    const maks = Math.max(1, Math.ceil(total / UKURAN_HAL));
+  function pager(el, total, hal, ganti, ukuran = UKURAN_HAL) {
+    const maks = Math.max(1, Math.ceil(total / ukuran));
     el.innerHTML = `<button type="button" class="btn sekunder kecil" ${hal <= 1 ? "disabled" : ""} data-p="-1">‹ Sebelumnya</button>
       <span>Halaman ${hal} dari ${maks}</span><button type="button" class="btn sekunder kecil" ${hal >= maks ? "disabled" : ""} data-p="1">Berikutnya ›</button>`;
     el.querySelectorAll("button").forEach(b => b.addEventListener("click", () => ganti(hal + Number(b.dataset.p))));
@@ -867,9 +868,9 @@
   });
 
   // ====== DASHBOARD PER PERUSAHAAN ======
-  let perAktif = "", asalPer = "", halBelum = 1, halSudah = 1;
+  let perAktif = "", asalPer = "", halBelum = 1, halSudah = 1, halAktivitas = 1, UKURAN_AKTIVITAS = 20;
   const waktuIndo = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }); };
-  function bukaPerusahaan(k) { perAktif = k; halBelum = 1; halSudah = 1; $("per-cari").value = ""; renderPerusahaan(); pilihTab("tab-perusahaan"); window.scrollTo(0, 0); }
+  function bukaPerusahaan(k) { perAktif = k; halBelum = 1; halSudah = 1; halAktivitas = 1; $("per-cari").value = ""; renderPerusahaan(); pilihTab("tab-perusahaan"); window.scrollTo(0, 0); }
   function siapkanTambah(nama) {
     asalPer = kunciPer(nama); $("t-per").value = nama; pilihTab("tab-tambah"); $("t-nama").focus();
     const b = $("btn-kembali-per"); b.hidden = !data.some(r => kunciPer(r.identitas.perusahaan) === asalPer);
@@ -893,7 +894,9 @@
       <tr><th style="text-align:left">SRQ-20</th><td>${badge("Fit to Work", "b-ok")} ${hit(n => n.kelaikanSRQ === "Fit to Work")}</td><td>${badge("Fit with Notice", "b-warn")} ${hit(n => n.kelaikanSRQ === "Fit with Notice")}</td></tr>`;
     $("per-dimensi").innerHTML = DIMENSI.map((d, i) => { const c = (kat) => nil.filter(x => x.n.dimensi[i].kategori === kat).length;
       return `<tr><td>${esc(d.nama)}</td><td class="c">${c("Stres Ringan")}</td><td class="c">${c("Stres Sedang")}</td><td class="c">${c("Stres Berat")}</td></tr>`; }).join("");
-    $("per-aktivitas").innerHTML = [...nil].sort((a, b) => String(b.r.dikirimPada).localeCompare(String(a.r.dikirimPada))).slice(0, 8).map(({ r, n }) =>
+    const urutAktivitas = [...nil].sort((a, b) => String(b.r.dikirimPada).localeCompare(String(a.r.dikirimPada)));
+    const maksAktivitas = Math.max(1, Math.ceil(urutAktivitas.length / UKURAN_AKTIVITAS)); if (halAktivitas > maksAktivitas) halAktivitas = maksAktivitas;
+    $("per-aktivitas").innerHTML = urutAktivitas.slice((halAktivitas - 1) * UKURAN_AKTIVITAS, halAktivitas * UKURAN_AKTIVITAS).map(({ r, n }) =>
       `<tr><td>${esc(waktuIndo(r.dikirimPada))}</td><td>${esc(r.identitas.nama)}</td><td>${esc(r.identitas.nip)}</td><td>${badgeSumber(r.sumber)}</td>
        <td>${badge(n.kelaikanSRQ, n.kelaikanSRQ === "Fit to Work" ? "b-ok" : "b-warn")}</td><td>${badge(n.kelaikanSDS, n.kelaikanSDS === "Fit to Work" ? "b-ok" : "b-warn")}</td></tr>`).join("")
       || `<tr><td colspan="6" class="intro">Belum ada yang mengisi.</td></tr>`;
@@ -914,6 +917,7 @@
       <td style="white-space:nowrap"><button type="button" class="btn sekunder kecil" data-aksi="lihat" data-id="${esc(r.id)}">Lihat</button>
       <button type="button" class="btn sekunder kecil" data-aksi="edit" data-id="${esc(r.id)}">Edit identitas</button>
       ${isSuper() ? `<button type="button" class="btn bahaya kecil" data-aksi="hapus" data-id="${esc(r.id)}">Hapus</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="10" class="intro">${q ? "Tidak ada yang cocok." : "Belum ada yang mengisi."}</td></tr>`;
+    pager($("hal-per-aktivitas"), urutAktivitas.length, halAktivitas, (h) => { halAktivitas = h; renderPerusahaan(); }, UKURAN_AKTIVITAS);
     pager($("hal-per-belum"), belum.length, halBelum, (h) => { halBelum = h; renderPerusahaan(); });
     pager($("hal-per-sudah"), sudah.length, halSudah, (h) => { halSudah = h; renderPerusahaan(); });
   }
