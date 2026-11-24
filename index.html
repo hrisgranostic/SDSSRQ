@@ -254,6 +254,7 @@
         <label class="cek"><input type="checkbox" id="pernyataan"><span>Saya menyatakan bahwa seluruh pengisian survei ini saya lakukan sendiri, dengan jujur dan sesuai kondisi saya yang sebenarnya.</span></label>
       </section>
       <div class="aksi"><button type="submit" class="btn besar" id="btn-kirim">Kirim</button></div>
+      <p class="kecil-teks" id="status-draf" style="margin:6px 0 0;color:#555;font-size:.85rem"></p>
       <div id="pesan" class="pesan" hidden></div>
     </form>
 
@@ -393,6 +394,7 @@
       SDS.forEach((_, i) => { const v = fd.get("sds" + (i + 1)); if (v) d.sds[i + 1] = v; });
       SRQ.forEach((_, i) => { const v = fd.get("srq" + (i + 1)); if (v) d.srq[i + 1] = v; });
       localStorage.setItem(k, JSON.stringify(d));
+      $("status-draf").textContent = "Jawaban disimpan sementara di browser ini pukul " + new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + ".";
       // jawaban sementara sudah pindah ke kunci NIP -> hapus yang sementara agar tidak terbawa ke peserta lain
       if (konteks.metode === "mandiri" && k !== "sdssrq-draf-m-tanpa-nip") {
         localStorage.removeItem("sdssrq-draf-m-tanpa-nip");
@@ -401,7 +403,7 @@
         Object.keys(localStorage).forEach(key => { const s = key.slice("sdssrq-draf-m-".length);
           if (key.startsWith("sdssrq-draf-m-") && key !== k && s && nipNow.startsWith(s)) localStorage.removeItem(key); });
       }
-    } catch (_) { /* browser menolak penyimpanan (mis. mode privat): form tetap berjalan */ }
+    } catch (_) { $("status-draf").textContent = "Browser ini tidak mengizinkan penyimpanan sementara. Jangan refresh halaman sebelum menekan Kirim."; }
   }
   function pulihDraf() {
     try {
